@@ -1,0 +1,6 @@
+00000 const     0 type:[number:0] 5
+00001 pop       1 type:[none:0] 
+00002 const     0 type:[number:0] 5
+00003 assign    0 type:[number:0] "a"
+00004 pop       1 type:[none:0] 
+00005 lrt       8 type:[none:0] 0
