@@ -127,7 +127,24 @@ void DGEvalICInst::writeAsJSON(ostream *outStream) {
                 << ", \"type\": \"" << (int)type.type
                 << ", \"dim\": " << type.dim;
                 
-    // TODO
+   if (opCode==CONST && type.dim==0)
+   {
+      switch (type.type)
+      {
+         case DGEvalType::DGString:
+            (*outStream) << ", \"value\": ";
+            DGEval::writeStrValue(outStream, strConstant);
+            break;
+         case DGEvalType::DGNumber:
+            (*outStream) << ", \"value\": " << numConstant;
+            break;
+         case DGEvalType::DGBoolean:
+            (*outStream) << ", \"value\": " << boolConstant;
+            break;
+         default:
+            break;
+      }
+   }
 
-    (*outStream) << "}";
+   (*outStream) << "}";
 }
