@@ -161,6 +161,12 @@ void X64CodeBag::comparisonInstruction(DGTypeDesc td, unsigned char cb)
                   0xF2, 0x0F, 0x10, 0x44, 0x24, 0xF8,
                   0x66, 0x0F, 0x2F, 0x44, 0x24, 0xF0
             );
+
+            // The following is to sanitize double precision comparison instruction
+            // Example: jle -> jbe. Effectively swapping bit 1 and bit 2 for gt, gte, lt, lte.
+            // A readable version could be coded by switch or if :)
+            if (cb>0x78)
+               cb=((cb << 1) & 4) | 2 | (cb & (unsigned char)0xf1);
             break;
          case DGEvalType::DGBoolean:
             // 4831C9                     xor rcx, rcx
