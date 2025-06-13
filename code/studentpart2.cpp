@@ -92,6 +92,16 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
                   node->left = node->right = nullptr;
                   transformed = true;
                }
+            } else if (node->left->type.type == DGEvalType::DGString && *(node->left->stringValue) == "") { // "" + x 
+               delete node->left;
+               node->left = nullptr;
+               node = node->right;
+               transformed = true;
+            } else if (node->right->type.type == DGEvalType::DGString && *(node->right->stringValue) == "") { // x + ""
+               delete node->right;
+               node->right = nullptr;
+               node = node->left;
+               transformed = true;
             }
          }
          break;
@@ -207,7 +217,7 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
       
       case OP_MINUS: {
          if (node->left != nullptr && node->left->opCode == CONST && 
-             node->left->type.type == DGEvalType::DGNumber && node->left->type.dim == 0) {
+             node->left->type.type == DGEvalType::DGNumber && node->left->type.dim == 0) { // -5
             node->opCode = CONST;
             node->type.type = DGEvalType::DGNumber;
             node->doubleValue = -node->left->doubleValue;
@@ -220,7 +230,7 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
       
       case OP_NOT: {
          if (node->left != nullptr && node->left->opCode == CONST && 
-             node->left->type.type == DGEvalType::DGBoolean && node->left->type.dim == 0) {
+             node->left->type.type == DGEvalType::DGBoolean && node->left->type.dim == 0) { // !true
             node->opCode = CONST;
             node->type.type = DGEvalType::DGBoolean;
             node->boolValue = !node->left->boolValue;
@@ -277,54 +287,123 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
          break;
       }
       
-      /////////////////////////////////
-      case OP_BAND:
-      case OP_BOR: {
-         if (node->left != nullptr && node->right != nullptr && 
-             node->left->opCode == CONST && node->right->opCode == CONST &&
-             node->left->type.type == DGEvalType::DGBoolean && node->right->type.type == DGEvalType::DGBoolean &&
-             node->left->type.dim == 0 && node->right->type.dim == 0) {
-            bool result;
-            switch (node->opCode) {
-               case OP_BAND: result = node->left->boolValue && node->right->boolValue; break;
-               case OP_BOR: result = node->left->boolValue || node->right->boolValue; break;
+      case OP_BAND: {
+         if (node->left != nullptr && node->right != nullptr &&
+               node->left->type.dim == 0 && node->right->type.dim == 0 &&
+               node->left->type.type == DGEvalType::DGBoolean && node->right->type.type == DGEvalType::DGBoolean) {
+            if (node->left->opCode == CONST && node->right->opCode == CONST) { // true && false
+               node->opCode = CONST;
+               node->type.type = DGEvalType::DGBoolean;
+               node->boolValue = node->left->boolValue && node->right->boolValue;
+               delete node->left;
+               delete node->right;
+               node->left = node->right = nullptr;
+               transformed = true;
+            } else if (node->left->opCode == CONST) {
+               if (node->left->boolValue == true) { // true && x
+                  delete node->left;
+                  node->left = nullptr;
+                  node = node->right;
+                  transformed = true;
+               } else { // false && x
+                  node->opCode = CONST;
+                  node->type.type = DGEvalType::DGBoolean;
+                  node->boolValue = false;
+                  delete node->left;
+                  delete node->right;
+                  node->left = node->right = nullptr;
+                  transformed = true;
+               }
+            } else if (node->right->opCode == CONST) {
+               if (node->right->boolValue == true) { // x && true
+                  delete node->right;
+                  node->right = nullptr;
+                  node = node->left;
+                  transformed = true;
+               } else { // x && false
+                  node->opCode = CONST;
+                  node->type.type = DGEvalType::DGBoolean;
+                  node->boolValue = false;
+                  delete node->left;
+                  delete node->right;
+                  node->left = node->right = nullptr;
+                  transformed = true;
+               }
             }
-            node->opCode = CONST;
-            node->type.type = DGEvalType::DGBoolean;
-            node->boolValue = result;
-            delete node->left;
-            delete node->right;
-            node->left = node->right = nullptr;
-            transformed = true;
+         }
+         break;
+      }
+
+      case OP_BOR: {
+         if (node->left != nullptr && node->right != nullptr &&
+               node->left->type.dim == 0 && node->right->type.dim == 0 &&
+               node->left->type.type == DGEvalType::DGBoolean && node->right->type.type == DGEvalType::DGBoolean) {
+            if (node->left->opCode == CONST && node->right->opCode == CONST) { // true || false
+               node->opCode = CONST;
+               node->type.type = DGEvalType::DGBoolean;
+               node->boolValue = node->left->boolValue || node->right->boolValue;
+               delete node->left;
+               delete node->right;
+               node->left = node->right = nullptr;
+               transformed = true;
+            } else if (node->left->opCode == CONST) {
+               if (node->left->boolValue == true) { // true || x
+                  node->opCode = CONST;
+                  node->type.type = DGEvalType::DGBoolean;
+                  node->boolValue = true;
+                  delete node->left;
+                  delete node->right;
+                  node->left = node->right = nullptr;
+                  transformed = true;
+               } else { // false || x
+                  delete node->left;
+                  node->left = nullptr;
+                  node = node->right;
+                  transformed = true;
+               }
+            } else if (node->right->opCode == CONST) {
+               if (node->right->boolValue == true) { // x || true
+                  node->opCode = CONST;
+                  node->type.type = DGEvalType::DGBoolean;
+                  node->boolValue = true;
+                  delete node->left;
+                  delete node->right;
+                  node->left = node->right = nullptr;
+                  transformed = true;
+               } else { // x || false
+                  delete node->right;
+                  node->right = nullptr;
+                  node = node->left;
+                  transformed = true;
+               }
+            }
          }
          break;
       }
       
-      /////////////////////////////////
       case OP_COND: {
          if (node->left != nullptr && node->left->opCode == CONST && 
              node->left->type.type == DGEvalType::DGBoolean && node->left->type.dim == 0 &&
              node->right != nullptr && node->right->left != nullptr && node->right->right != nullptr) {
-            DGEvalExpNode *selected = node->left->boolValue ? node->right->left : node->right->right;
-            if (selected != nullptr && selected->opCode == CONST) {
-               node->opCode = CONST;
-               node->type = selected->type;
-               switch (selected->type.type) {
-                  case DGEvalType::DGNumber:
-                     node->doubleValue = selected->doubleValue;
-                     break;
-                  case DGEvalType::DGBoolean:
-                     node->boolValue = selected->boolValue;
-                     break;
-                  case DGEvalType::DGString:
-                     node->stringValue = selected->stringValue;
-                     break;
-               }
+            if (node->left->boolValue == true) { // true ? x : y
                delete node->left;
-               delete node->right->left;
+               node->left = nullptr;
                delete node->right->right;
+               node->right->right = nullptr;
+               node = node->right->left;
+               node->right->left = nullptr;
                delete node->right;
-               node->left = node->right = nullptr;
+               node->right = nullptr;
+               transformed = true;
+            } else { // false ? x : y
+               delete node->left;
+               node->left = nullptr;
+               delete node->right->left;
+               node->right->left = nullptr;
+               node = node->right->right;
+               node->right->right = nullptr;
+               delete node->right;
+               node->right = nullptr;
                transformed = true;
             }
          }
@@ -332,6 +411,9 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
       }
    }
    
+   ///////////////////////////////////////
+   // EQUALİTY OPERATÖRÜ OVERLOADED DEĞİL. BAŞKA BİR YOL BUL.
+   ///////////////////////////////////////
    if (transformed && parentNode != nullptr) {
       if (parentNode->left == node) {
          parentNode->left = node;
