@@ -2,6 +2,9 @@ import subprocess
 import shutil
 import os
 
+FILE_EXTENSION = "-IC.txt"
+# FILE_EXTENSION = ".json"
+
 def run_code(optimization_level, full_file_path):
 
     TEMP_PATH = './code/tester'
@@ -10,7 +13,7 @@ def run_code(optimization_level, full_file_path):
 
     subprocess.run(['./code/project4', '-p' + str(optimization_level), './code/tester'])
 
-    with open(TEMP_PATH + '-IC.txt', 'r') as f:
+    with open(TEMP_PATH + FILE_EXTENSION, 'r') as f:
         content = f.read()
 
     return content
@@ -23,7 +26,7 @@ def handle_input(path, i, optimization_level):
 
     code_output = run_code(optimization_level, full_file_path + '.txt')
     
-    with open(full_file_path + '-IC.txt', 'r') as f:
+    with open(full_file_path + FILE_EXTENSION, 'r') as f:
         correct_output = f.read()
 
 
