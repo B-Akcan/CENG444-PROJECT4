@@ -25,10 +25,14 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
       return;
    }
    
+   // Default stackLoad to 1 for most expressions (they push one result onto the stack)
+   node->stackLoad = 1; 
+
    if (node->opCode == CONST) {
-      return;
+      return; // Already set stackLoad to 1
    }
    
+   // Recursively process children first
    if (node->left != nullptr) {
       scanConstantFolding(node, node->left);
    }
@@ -409,11 +413,70 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
          }
          break;
       }
+
+      case OP_COMMA: {
+         // Determine if it's a topmost comma for optimization purposes
+         bool isTopmostComma = false;
+         if (parentNode == nullptr || // Root of the statement expression
+             (parentNode->opCode != OP_COMMA && parentNode->left == node)) { // Left child and parent is not comma
+            isTopmostComma = true;
+         }
+
+         // If this comma is the right child of a function call or an array literal, then its parts are effective
+         bool inCallOrArrayLiteral = false;
+         if (parentNode != nullptr && (parentNode->opCode == OP_CALL || parentNode->opCode == LRT)) {
+             if (parentNode->right == node) {
+                 inCallOrArrayLiteral = true;
+             }
+         }
+
+         node->stackLoad = 0; // Reset stackLoad for comma, calculate based on effective children
+         
+         // Apply OPTIMIZE_DC_EXPPART optimization and calculate stackLoad
+         // Process right child (an expression part)
+         if (node->right != nullptr) {
+            if ((optimization & OPTIMIZE_DC_EXPPART) && isTopmostComma && !inCallOrArrayLiteral) {
+               if (node->right->functionCallCount == 0 && node->right->assignmentCount == 0) {
+                  node->right->eliminateIC = true;
+               }
+            }
+            if (!node->right->eliminateIC) {
+                node->stackLoad += node->right->stackLoad;
+            }
+         }
+
+         // Traverse the left chain of commas to sum up stackLoads of effective parts
+         DGEvalExpNode* currentLeft = node->left;
+         while (currentLeft != nullptr) {
+             if (currentLeft->opCode == OP_COMMA) {
+                 if ((optimization & OPTIMIZE_DC_EXPPART) && isTopmostComma && !inCallOrArrayLiteral) {
+                     if (currentLeft->right != nullptr && 
+                         currentLeft->right->functionCallCount == 0 && 
+                         currentLeft->right->assignmentCount == 0) {
+                         currentLeft->right->eliminateIC = true;
+                     }
+                 }
+                 if (currentLeft->right != nullptr && !currentLeft->right->eliminateIC) {
+                     node->stackLoad += currentLeft->right->stackLoad;
+                 }
+                 currentLeft = currentLeft->left; // Move to the next left part in the chain
+             } else { // It's a single expression part at the end of the comma chain
+                 if ((optimization & OPTIMIZE_DC_EXPPART) && isTopmostComma && !inCallOrArrayLiteral) {
+                     if (currentLeft->functionCallCount == 0 && 
+                         currentLeft->assignmentCount == 0) {
+                         currentLeft->eliminateIC = true;
+                     }
+                 }
+                 if (!currentLeft->eliminateIC) {
+                     node->stackLoad += currentLeft->stackLoad;
+                 }
+                 break; // End of the comma chain
+             }
+         }
+         break;
+      }
    }
    
-   ///////////////////////////////////////
-   // EQUALİTY OPERATÖRÜ OVERLOADED DEĞİL. BAŞKA BİR YOL BUL.
-   ///////////////////////////////////////
    if (transformed && parentNode != nullptr) {
       if (parentNode->left == node) {
          parentNode->left = node;
@@ -427,12 +490,15 @@ void DGEval::scanForIC() {
    ic = new DGEvalIC();
 
    for (DGEvalStatementNode *statement = draftedStatements->head; statement != nullptr; statement = statement->next) {
-      if (statement->exp != nullptr) {
-         // if ((optimization & OPTIMIZE_DC_STATEMENT) != 0) {
-         //    if (statement->exp->functionCallCount == 0 && statement->exp->assignmentCount == 0) {
-         //       continue;
-         //    }
-         // }
+      bool isEffective = true;
+      if (optimization & OPTIMIZE_DC_STATEMENT) {
+         isEffective = statement->asPredecessorCount > 0 || 
+                      (statement->exp != nullptr && 
+                       (statement->exp->functionCallCount > 0 || 
+                        statement->exp->assignmentCount > 0));
+      }
+
+      if (isEffective && statement->exp != nullptr) {
          scanForIC(nullptr, statement->exp);
       }
    }
@@ -442,6 +508,11 @@ void DGEval::scanForIC() {
 
 void DGEval::scanForIC(DGEvalExpNode *parentNode, DGEvalExpNode *node) {
    if (node == nullptr) {
+      return;
+   }
+   
+   // Skip generating IC for eliminated nodes
+   if (node->eliminateIC) {
       return;
    }
    
@@ -513,6 +584,15 @@ void DGEval::scanForIC(DGEvalExpNode *parentNode, DGEvalExpNode *node) {
       
       case INSID: {
          ic->emitIC(INSID, 0, node->type)->strConstant = node->stringValue;
+         break;
+      }
+
+      case OP_COMMA: {
+         // The actual instruction for comma is POP with its stackLoad.
+         // We need to pop all but the last value from the stack.
+         if (node->stackLoad > 1) {
+            ic->emitIC(POP, node->stackLoad - 1, DGEvalType::DGNone);
+         }
          break;
       }
    }
