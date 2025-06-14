@@ -583,7 +583,7 @@ void DGEval::scanForIC(DGEvalExpNode *parentNode, DGEvalExpNode *node) {
       }
       
       case INSID: {
-         ic->emitIC(INSID, 0, node->type)->strConstant = node->stringValue;
+         ic->emitIC(OP_ASSIGN, 0, node->type)->strConstant = node->stringValue;
          break;
       }
 
@@ -591,7 +591,7 @@ void DGEval::scanForIC(DGEvalExpNode *parentNode, DGEvalExpNode *node) {
          // The actual instruction for comma is POP with its stackLoad.
          // We need to pop all but the last value from the stack.
          if (node->stackLoad > 1) {
-            ic->emitIC(POP, node->stackLoad - 1, DGEvalType::DGNone);
+            ic->emitIC(POP, node->stackLoad - 1, { DGEvalType::DGNone, 0 });
          }
          break;
       }

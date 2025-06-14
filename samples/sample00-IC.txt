@@ -1,17 +1,9 @@
-00000 id        0 type:[number:0] "a"
-00001 const     0 type:[number:0] 5
-00002 id        0 type:[number:0] "b"
+00000 id        0 type:[number:0] "b"
+00001 const     0 type:[number:0] 1
+00002 const     0 type:[number:0] 2
 00003 const     0 type:[number:0] 3
-00004 id        0 type:[number:0] "x"
-00005 const     0 type:[boolean:0] 1
-00006 jf        0 type:[none:0] 
-00007 id        0 type:[number:0] "a"
-00008 jmp      10 type:[none:0] 
-00009 id        0 type:[number:0] "b"
-00010 id        0 type:[number:0] "y"
-00011 const     0 type:[boolean:0] 0
-00012 jf       15 type:[none:0] 
-00013 id        0 type:[number:0] "a"
-00014 jmp      16 type:[none:0] 
-00015 id        0 type:[number:0] "b"
-00016 lrt       8 type:[none:0] 0
+00004 id        0 type:[number:0] "c"
+00005 const     0 type:[number:0] 4
+00006 const     0 type:[number:0] 5
+00007 const     0 type:[number:0] 6
+00008 lrt       8 type:[none:0] 0
