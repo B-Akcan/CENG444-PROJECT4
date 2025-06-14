@@ -621,7 +621,9 @@ void DGEval::scanForIC(DGEvalExpNode *parentNode, DGEvalExpNode *node) {
       case OP_LT:
       case OP_LTE:
       case OP_GT:
-      case OP_GTE: {
+      case OP_GTE:
+      case OP_ASSIGN:
+      case OP_NOP: {
          ic->emitIC(node->opCode, 0, node->type);
          break;
       }
