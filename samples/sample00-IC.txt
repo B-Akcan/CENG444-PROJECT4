@@ -1,9 +1,0 @@
-00000 id        0 type:[number:0] "b"
-00001 const     0 type:[number:0] 1
-00002 const     0 type:[number:0] 2
-00003 const     0 type:[number:0] 3
-00004 id        0 type:[number:0] "c"
-00005 const     0 type:[number:0] 4
-00006 const     0 type:[number:0] 5
-00007 const     0 type:[number:0] 6
-00008 lrt       8 type:[none:0] 0

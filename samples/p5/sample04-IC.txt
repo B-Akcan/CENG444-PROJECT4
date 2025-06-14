@@ -1,0 +1,37 @@
+00000 const     0 type:[number:0] 0
+00001 assign    0 type:[number:0] "a"
+00002 const     0 type:[number:0] 3
+00003 add       0 type:[number:0] 
+00004 assign    1 type:[number:0] "b"
+00005 const     0 type:[number:0] 4
+00006 add       0 type:[number:0] 
+00007 id        0 type:[number:0] "a"
+00008 const     0 type:[number:0] 2
+00009 add       0 type:[number:0] 
+00010 lrt       0 type:[number:1] 2
+00011 call      1 type:[number:0] "max" @4
+00012 assign    2 type:[number:0] "c"
+00013 pop       1 type:[none:0] 
+00014 id        1 type:[number:0] "b"
+00015 const     0 type:[number:0] 2
+00016 add       0 type:[number:0] 
+00017 id        2 type:[number:0] "c"
+00018 const     0 type:[number:0] 5
+00019 add       0 type:[number:0] 
+00020 lrt       0 type:[number:1] 2
+00021 call      1 type:[number:0] "max" @4
+00022 assign    3 type:[number:0] "d"
+00023 const     0 type:[number:0] 1
+00024 add       0 type:[number:0] 
+00025 id        2 type:[number:0] "c"
+00026 const     0 type:[number:0] 5
+00027 add       0 type:[number:0] 
+00028 lrt       0 type:[number:1] 2
+00029 call      1 type:[number:0] "max" @4
+00030 assign    4 type:[number:0] "e"
+00031 lrt       5 type:[string:0] 0
+00032 lrt       3 type:[string:0] "\n"
+00033 lrt       4 type:[string:0] 0
+00034 call      1 type:[number:0] "print" @14
+00035 pop       1 type:[none:0] 
+00036 lrt       8 type:[none:0] 0

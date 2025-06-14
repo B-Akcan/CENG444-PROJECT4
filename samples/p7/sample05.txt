@@ -1,0 +1,7 @@
+print("b is: "+b+"\n");
+a=[[1,2,3,4],[sin(pi()/2), 3]];
+print("Test: "+(d=a[1][0])+"\n");
+b+2;
+b=(25,12-5/2,pi()*2);
+e=a[0];
+print("Indirect access: "+e[3]+"\n");

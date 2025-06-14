@@ -13,7 +13,7 @@ using namespace std;
 
 
 void DGEval::scanConstantFolding() {
-   for (DGEvalStatementNode *statement = statements->head; statement != nullptr; statement = statement->next) {
+   for (DGEvalStatementNode *statement = draftedStatements->head; statement != nullptr; statement = statement->next) {
       if (statement->exp != nullptr) {
          scanConstantFolding(nullptr, statement->exp);
       }
@@ -68,7 +68,7 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
                if (node->left->opCode == CONST && node->right->opCode == CONST) { // "a" + "b"
                   node->opCode = CONST;
                   node->type.type = DGEvalType::DGString;
-                  *(node->stringValue) = *(node->left->stringValue) + *(node->right->stringValue);
+                  node->stringValue = new string(*(node->left->stringValue) + *(node->right->stringValue));
                   delete node->left;
                   delete node->right;
                   node->left = node->right = nullptr;

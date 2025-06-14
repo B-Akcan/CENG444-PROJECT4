@@ -1,0 +1,8 @@
+r=2*(4-1);
+a=25*2/sin(stddev([2,4,6])>b?c>t?sin(k*pi()/180):-0.5:2.5e-1);
+k=24+b;
+b=5+c/t;
+wait a, d then print("Calculation complete "+a);
+c=4;
+t=1;
+d=k+t;

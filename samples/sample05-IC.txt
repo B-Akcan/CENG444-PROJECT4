@@ -1,4 +1,0 @@
-00000 const     0 type:[number:0] 5
-00001 id        0 type:[number:0] "a"
-00002 const     0 type:[number:0] 5
-00003 lrt       8 type:[none:0] 0

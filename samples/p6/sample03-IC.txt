@@ -1,0 +1,19 @@
+00000 lrt       3 type:[string:0] "324"
+00001 pop       1 type:[none:0] 
+00002 const     0 type:[number:0] 3
+00003 assign    0 type:[number:0] "a"
+00004 const     0 type:[number:0] 1
+00005 add       0 type:[number:0] 
+00006 const     0 type:[number:0] 2
+00007 gt        0 type:[number:0] 
+00008 jf       11 type:[number:0] 
+00009 id        0 type:[number:0] "a"
+00010 jmp      12 type:[number:0] 
+00011 const     0 type:[number:0] 2
+00012 assign    1 type:[number:0] "k"
+00013 pop       1 type:[none:0] 
+00014 id        0 type:[number:0] "a"
+00015 const     0 type:[number:0] 2
+00016 add       0 type:[number:0] 
+00017 pop       1 type:[none:0] 
+00018 lrt       8 type:[none:0] 0
