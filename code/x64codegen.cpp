@@ -306,7 +306,9 @@ void X64CodeBag::placeResultOnStack(bool isDouble)
 
 void X64CodeBag::translateInstruction(DGEvalICInst *inst)
 {
-   int      count=(int)inst->numConstant;
+   int      count=(int)inst->numConstant,
+            ic=0,
+            dc=0;
    uint64_t p;
 
    inst->codeOffset=codeLen;
@@ -315,8 +317,25 @@ void X64CodeBag::translateInstruction(DGEvalICInst *inst)
       case OP_CALL:
          DGEvalFuncDesc   *fd;
          fd=dgEval->libFunctionAt((int)inst->numConstant);
+
          for (int i=fd->paraCount;i>0;i--)
-            setupParameter(i-1, fd->types[i].dim==0 && fd->types[i].type==DGEvalType::DGNumber);
+            if (fd->types[i].dim==0 && fd->types[i].type==DGEvalType::DGNumber)
+               dc++;
+            else
+               ic++;
+
+         if (fd->requiresDGEval)
+            ic++;
+
+         for (int i=fd->paraCount;i>0;i--)
+         {
+            bool isDouble=fd->types[i].dim==0 && fd->types[i].type==DGEvalType::DGNumber;
+
+            setupParameter(isDouble?(--dc):(--ic), isDouble);
+         }
+
+         if (fd->requiresDGEval)
+            setupImmediateIntegralPara(0, (uint64_t)dgEval);
 
          emitCall(fd->f);
 

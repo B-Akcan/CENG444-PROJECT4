@@ -766,6 +766,12 @@ class DGEvalFuncDesc
                   name;
       void        // The entry point of the function
                  *f;
+      bool        // True if the function requires implicit pointer to the DGEval instance.
+                  // This is necessary for resource allocating functions to enable
+                  // post execution clean-up.
+                  // See DGEval::registerStringObject(string *str)
+                  // and DGEval::registerDGArrayObject(DGEvalArray *arr)
+                  requiresDGEval;
       int         // Number of the parameters for this function.
                   paraCount;
       DGTypeDesc  // Type descriptor array to describe the return type,

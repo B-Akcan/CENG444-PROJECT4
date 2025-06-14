@@ -20,7 +20,7 @@ main:
    ret
 
    ; Enter and leave instructions
-   enter 40000000h, 0
+   enter 4000h, 0
    leave
 
    ; For double const
@@ -162,20 +162,24 @@ main:
 
    ; gt
    jle l1
+   jbe l1 ; case for comisd
    inc rcx
 l1:
    push rcx
 
    ; gte
    jl l2
+   jb l2 ; case for comisd
    inc rcx
 l2:
    ; lt
    jge l3
+   jae l3 ; case for comisd
    inc rcx
 l3:
    ; lte
    jg l4
+   ja l4 ; case for comisd
    inc rcx
 l4:
    ; eq
@@ -186,6 +190,7 @@ l5:
    je l6
    inc rcx
 l6:
+
    ; **** Implementing comparison operators ends
    ; Condition evaluation for JT
    pop rax

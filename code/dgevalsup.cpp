@@ -71,25 +71,25 @@ bool DGTypeDesc::operator != (DGTypeDesc other)
 
 DGEvalFuncDesc DGEval::lib[]=
 {
-   {"stddev", (void *)DGEval::stddev, 1,{{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 1}}},
-   {"mean", (void *)DGEval::mean, 1,{{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 1}}},
-   {"count", (void *)DGEval::count,1,{{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 1}}},
-   {"min", (void *)DGEval::min, 1,{{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 1}}},
-   {"max", (void *)DGEval::max, 1,{{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 1}}},
-   {"sin", (void *)DGEval::sin, 1,{{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
-   {"cos", (void *)DGEval::cos, 1,{{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
-   {"tan", (void *)DGEval::tan, 1,{{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
-   {"pi", (void *)DGEval::pi, 0,{{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
-   {"atan", (void *)DGEval::atan, 1,{{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
-   {"asin", (void *)DGEval::asin, 1,{{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
-   {"acos", (void *)DGEval::acos, 1,{{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
-   {"exp", (void *)DGEval::exp, 1,{{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
-   {"ln", (void *)DGEval::ln, 1,{{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
-   {"print", (void *)DGEval::print, 1,{{DGEvalType::DGNumber, 0},{DGEvalType::DGString, 0}}},
-   {"random", (void *)DGEval::random, 1,{{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
-   {"len", (void *)DGEval::len, 1,{{DGEvalType::DGNumber, 0},{DGEvalType::DGString, 0}}},
-   {"right", (void *)DGEval::right, 2,{{DGEvalType::DGNumber, 0},{DGEvalType::DGString, 0},{DGEvalType::DGNumber, 0}}},
-   {"left", (void *)DGEval::left, 2,{{DGEvalType::DGNumber, 0},{DGEvalType::DGString, 0},{DGEvalType::DGNumber, 0}}}
+   {"stddev", (void *)DGEval::stddev, false, 1, {{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 1}}},
+   {"mean", (void *)DGEval::mean, false, 1, {{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 1}}},
+   {"count", (void *)DGEval::count, false, 1, {{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 1}}},
+   {"min", (void *)DGEval::min, false, 1, {{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 1}}},
+   {"max", (void *)DGEval::max, false, 1, {{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 1}}},
+   {"sin", (void *)DGEval::sin, false, 1, {{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
+   {"cos", (void *)DGEval::cos, false, 1, {{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
+   {"tan", (void *)DGEval::tan, false, 1, {{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
+   {"pi", (void *)DGEval::pi, false, 0, {{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
+   {"atan", (void *)DGEval::atan, false, 1, {{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
+   {"asin", (void *)DGEval::asin, false, 1, {{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
+   {"acos", (void *)DGEval::acos, false, 1, {{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
+   {"exp", (void *)DGEval::exp, false, 1, {{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
+   {"ln", (void *)DGEval::ln, false, 1, {{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
+   {"print", (void *)DGEval::print, false, 1,{{DGEvalType::DGNumber, 0},{DGEvalType::DGString, 0}}},
+   {"random", (void *)DGEval::random, false, 1,{{DGEvalType::DGNumber, 0},{DGEvalType::DGNumber, 0}}},
+   {"len", (void *)DGEval::len, false, 1, {{DGEvalType::DGNumber, 0},{DGEvalType::DGString, 0}}},
+   {"right", (void *)DGEval::right, true, 2, {{DGEvalType::DGString, 0},{DGEvalType::DGString, 0},{DGEvalType::DGNumber, 0}}},
+   {"left", (void *)DGEval::left, true, 2, {{DGEvalType::DGString, 0},{DGEvalType::DGString, 0},{DGEvalType::DGNumber, 0}}}
 };
 
 DGEvalNode::DGEvalNode(int pLineNumber)
@@ -768,8 +768,7 @@ void DGEvalIC::writeReadable(ostream *outStream)
             (*outStream) << inst->numConstant;
       }
       if (inst->opCode==OP_CALL)
-         if (inst->strConstant!=nullptr)
-            (*outStream) << "\"" << DGEval::libFunctionAt((int)inst->numConstant)->name << "\" @"<< (int)inst->numConstant;
+         (*outStream) << "\"" << DGEval::libFunctionAt((int)inst->numConstant)->name << "\" @"<< (int)inst->numConstant;
 
       (*outStream) << endl;
    }

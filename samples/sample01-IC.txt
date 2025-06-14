@@ -28,9 +28,9 @@
 00027 const     0 type:[number:0] 2
 00028 div       0 type:[number:0] 
 00029 id        0 type:[number:0] "sin"
-00030 call     -1 type:[number:0] 
+00030 call     -1 type:[number:0] "stddev" @0
 00031 id        0 type:[number:0] "stddev"
-00032 call     -1 type:[number:0] 
+00032 call     -1 type:[number:0] "stddev" @0
 00033 const     0 type:[number:0] 2
 00034 const     0 type:[number:0] 4
 00035 const     0 type:[number:0] 6
@@ -42,11 +42,11 @@
 00041 id        0 type:[number:0] "t"
 00042 jf       52 type:[none:0] 
 00043 id        0 type:[number:0] "sin"
-00044 call     -1 type:[number:0] 
+00044 call     -1 type:[number:0] "stddev" @0
 00045 id        0 type:[number:0] "k"
 00046 mul       0 type:[number:0] 
 00047 id        0 type:[number:0] "pi"
-00048 call     -1 type:[number:0] 
+00048 call     -1 type:[number:0] "stddev" @0
 00049 div       0 type:[number:0] 
 00050 const     0 type:[number:0] 180
 00051 jmp      54 type:[none:0] 
@@ -55,7 +55,7 @@
 00054 jmp      56 type:[none:0] 
 00055 const     0 type:[number:0] 0.25
 00056 id        0 type:[number:0] "print"
-00057 call     -1 type:[number:0] 
+00057 call     -1 type:[number:0] "stddev" @0
 00058 const     0 type:[string:0] "Calculation complete "
 00059 add       0 type:[string:0] 
 00060 id        0 type:[number:0] "a"

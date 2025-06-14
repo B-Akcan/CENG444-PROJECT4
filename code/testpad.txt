@@ -20,8 +20,7 @@
     20 0000001F C3                         ret
     21                                  
     22                                     ; Enter and leave instructions
-    23 00000020 C8000000                   enter 40000000h, 0
-    23          ******************       warning: word data exceeds bounds [-w+number-overflow]
+    23 00000020 C8004000                   enter 4000h, 0
     24 00000024 C9                         leave
     25                                  
     26                                     ; For double const
@@ -171,44 +170,49 @@
    161 000001CB 4883F800                   cmp rax, 0
    162                                  
    163                                     ; gt
-   164 000001CF 7E03                       jle l1
-   165 000001D1 48FFC1                     inc rcx
-   166                                  l1:
-   167 000001D4 51                         push rcx
-   168                                  
-   169                                     ; gte
-   170 000001D5 7C03                       jl l2
-   171 000001D7 48FFC1                     inc rcx
-   172                                  l2:
-   173                                     ; lt
-   174 000001DA 7D03                       jge l3
-   175 000001DC 48FFC1                     inc rcx
-   176                                  l3:
-   177                                     ; lte
-   178 000001DF 7F03                       jg l4
-   179 000001E1 48FFC1                     inc rcx
-   180                                  l4:
-   181                                     ; eq
-   182 000001E4 7503                       jne l5
-   183 000001E6 48FFC1                     inc rcx
-   184                                  l5:
-   185                                     ; neq
-   186 000001E9 7403                       je l6
-   187 000001EB 48FFC1                     inc rcx
-   188                                  l6:
-   189                                     ; **** Implementing comparison operators ends
-   190                                     ; Condition evaluation for JT
-   191 000001EE 58                         pop rax
-   192 000001EF 4809C0                     or rax, rax
-   193 000001F2 75E0                       jnz l1 ; for JT
-   194 000001F4 74DE                       jz l1  ; for LF
-   195                                  
-   196                                     ; Calculating array base for allocate array / Elements in reverse order
-   197 000001F6 4889E1                     mov rcx, rsp
-   198                                  
-   199                                     ; Adding rsp a long value (Used to cleanup the stack for "allocatearray"
-   200 000001F9 4881C400000040             add rsp, 0x40000000
-   201                                  
-   202                                     ; Converting the second parameter of arrayelement
-   203 00000200 F2480F2DD0                 cvtsd2si rdx, xmm0
-   204                                  
+   164 000001CF 7E05                       jle l1
+   165 000001D1 7603                       jbe l1 ; case for comisd
+   166 000001D3 48FFC1                     inc rcx
+   167                                  l1:
+   168 000001D6 51                         push rcx
+   169                                  
+   170                                     ; gte
+   171 000001D7 7C05                       jl l2
+   172 000001D9 7203                       jb l2 ; case for comisd
+   173 000001DB 48FFC1                     inc rcx
+   174                                  l2:
+   175                                     ; lt
+   176 000001DE 7D05                       jge l3
+   177 000001E0 7303                       jae l3 ; case for comisd
+   178 000001E2 48FFC1                     inc rcx
+   179                                  l3:
+   180                                     ; lte
+   181 000001E5 7F05                       jg l4
+   182 000001E7 7703                       ja l4 ; case for comisd
+   183 000001E9 48FFC1                     inc rcx
+   184                                  l4:
+   185                                     ; eq
+   186 000001EC 7503                       jne l5
+   187 000001EE 48FFC1                     inc rcx
+   188                                  l5:
+   189                                     ; neq
+   190 000001F1 7403                       je l6
+   191 000001F3 48FFC1                     inc rcx
+   192                                  l6:
+   193                                  
+   194                                     ; **** Implementing comparison operators ends
+   195                                     ; Condition evaluation for JT
+   196 000001F6 58                         pop rax
+   197 000001F7 4809C0                     or rax, rax
+   198 000001FA 75DA                       jnz l1 ; for JT
+   199 000001FC 74D8                       jz l1  ; for LF
+   200                                  
+   201                                     ; Calculating array base for allocate array / Elements in reverse order
+   202 000001FE 4889E1                     mov rcx, rsp
+   203                                  
+   204                                     ; Adding rsp a long value (Used to cleanup the stack for "allocatearray"
+   205 00000201 4881C400000040             add rsp, 0x40000000
+   206                                  
+   207                                     ; Converting the second parameter of arrayelement
+   208 00000208 F2480F2DD0                 cvtsd2si rdx, xmm0
+   209                                  

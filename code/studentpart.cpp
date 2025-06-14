@@ -470,7 +470,7 @@ void DGEval::scanCalculateTypes(DGEvalExpNode *parentNode, DGEvalExpNode *node)
 
                   for (int i=0;i<pc;i++, td++)
                   {
-                     if ((*v)[i]->type!=*td)
+                     if ((*v)[pc-i-1]->type!=*td)
                      {
                         messageSet.appendMessage(node->lineNumber,
                               string("Type of parameter ")+to_string(i+1)+" of function <"+*left->stringValue+"> must be "+DGEval::typeStr[(int)td->type]+"["+to_string(td->dim)+"].",
@@ -561,6 +561,10 @@ void DGEval::scanCalculateTypes(DGEvalExpNode *parentNode, DGEvalExpNode *node)
             }
             else
             {
+               if (parentNode->opCode!=OP_CALL)
+                  messageSet.appendMessage(node->lineNumber, "Function reference must be with a call operator <"+*node->stringValue+">.", DGEvalMsgSeverity::Error);
+
+               // Keep type to help type evaluation and to suppress additional errors.
                node->type=f->types[0];
             }
          }
@@ -895,4 +899,3 @@ void DGEvalStatementList::writeAsJSON(ostream *os)
    }
    (*os)<<"]";
 }
-

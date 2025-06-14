@@ -98,11 +98,13 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
                delete node->left;
                node->left = nullptr;
                node = node->right;
+               node->type.type = DGEvalType::DGString;
                transformed = true;
             } else if (node->right->type.type == DGEvalType::DGString && *(node->right->stringValue) == "") { // x + ""
                delete node->right;
                node->right = nullptr;
                node = node->left;
+               node->type.type = DGEvalType::DGString;
                transformed = true;
             }
          }
