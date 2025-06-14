@@ -447,6 +447,9 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
          break;
       }
 
+      ////////////////////////////////////////////////
+      // HATALI
+      ////////////////////////////////////////////////
       case OP_COMMA: {
          // Determine if it's a topmost comma for optimization purposes
          bool isTopmostComma = false;
@@ -591,6 +594,10 @@ void DGEval::scanForIC(DGEvalExpNode *parentNode, DGEvalExpNode *node) {
    if (node->left != nullptr) {
       scanForIC(node, node->left);
    }
+
+   if (node->right != nullptr) {
+      scanForIC(node, node->right);
+   }
    
    switch (node->opCode) {
       case CONST: {
@@ -642,7 +649,9 @@ void DGEval::scanForIC(DGEvalExpNode *parentNode, DGEvalExpNode *node) {
       
       case INSID: {
          // p1 implies the word (symbol table index), strConstant is the name (for debugging/JSON)
-         ic->emitIC(INSID, node->idNdx, node->type)->strConstant = node->stringValue;
+         if (node->idNdx >= 0) {
+            ic->emitIC(INSID, node->idNdx, node->type)->strConstant = node->stringValue;
+         }
          break;
       }
 
@@ -652,10 +661,6 @@ void DGEval::scanForIC(DGEvalExpNode *parentNode, DGEvalExpNode *node) {
          }
          break;
       }
-   }
-   
-   if (node->right != nullptr) {
-      scanForIC(node, node->right);
    }
 }
 
