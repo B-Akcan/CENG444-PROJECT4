@@ -25,14 +25,12 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
       return;
    }
    
-   // Default stackLoad to 1 for most expressions (they push one result onto the stack)
    node->stackLoad = 1; 
 
    if (node->opCode == CONST) {
-      return; // Already set stackLoad to 1
+      return;
    }
    
-   // Recursively process children first
    if (node->left != nullptr) {
       scanConstantFolding(node, node->left);
    }
@@ -287,6 +285,39 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
             delete node->right;
             node->left = node->right = nullptr;
             transformed = true;
+         } else if (node->left != nullptr && node->right != nullptr &&
+                    node->left->type.type == DGEvalType::DGString && node->right->type.type == DGEvalType::DGString &&
+                    node->left->type.dim == 0 && node->right->type.dim == 0) {
+            // String comparison LRT transformation
+            node->opCode = LRT;
+            node->idNdx = 6; // strcmp function
+            node->type.type = DGEvalType::DGBoolean;
+            node->type.dim = 0;
+            switch (node->opCode) {
+               case OP_EQ: node->doubleValue = 0; break;
+               case OP_NEQ: node->doubleValue = 1; break;
+               case OP_GT: node->doubleValue = 2; break;
+               case OP_LT: node->doubleValue = 3; break;
+               case OP_GTE: node->doubleValue = 4; break;
+               case OP_LTE: node->doubleValue = 5; break;
+            }
+            transformed = true;
+            node->stackLoad = 1;
+         } else if (node->left != nullptr && node->right != nullptr &&
+                    node->left->type == node->right->type &&
+                    node->left->type.dim > 0 && // Must be an array
+                    (node->opCode == OP_EQ || node->opCode == OP_NEQ)) {
+            // Array comparison LRT transformation
+            node->opCode = LRT;
+            node->idNdx = 7; // arrcmp function
+            node->type.type = DGEvalType::DGBoolean;
+            node->type.dim = 0;
+            switch (node->opCode) {
+               case OP_EQ: node->doubleValue = 0; break;
+               case OP_NEQ: node->doubleValue = 1; break;
+            }
+            transformed = true;
+            node->stackLoad = 1;
          }
          break;
       }
@@ -432,15 +463,20 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
 
          node->stackLoad = 0; // Reset stackLoad for comma, calculate based on effective children
          
-         // Apply OPTIMIZE_DC_EXPPART optimization and calculate stackLoad
          // Process right child (an expression part)
          if (node->right != nullptr) {
+            // The rightmost part of a topmost comma expression is special: it's never eliminated
+            // if OPTIMIZE_DC_EXPPART is enabled and not in a call/array literal.
             if ((optimization & OPTIMIZE_DC_EXPPART) && isTopmostComma && !inCallOrArrayLiteral) {
-               if (node->right->functionCallCount == 0 && node->right->assignmentCount == 0) {
-                  node->right->eliminateIC = true;
-               }
+                node->right->eliminateIC = false; // Explicitly ensure the rightmost part is NOT eliminated
+            } else {
+                // Otherwise, follow the general rule for elimination
+                if (node->right->functionCallCount == 0 && node->right->assignmentCount == 0) {
+                    node->right->eliminateIC = true;
+                }
             }
-            if (!node->right->eliminateIC) {
+            
+            if (!node->right->eliminateIC) { // If not eliminated
                 node->stackLoad += node->right->stackLoad;
             }
          }
@@ -449,20 +485,23 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
          DGEvalExpNode* currentLeft = node->left;
          while (currentLeft != nullptr) {
              if (currentLeft->opCode == OP_COMMA) {
-                 if ((optimization & OPTIMIZE_DC_EXPPART) && isTopmostComma && !inCallOrArrayLiteral) {
-                     if (currentLeft->right != nullptr && 
-                         currentLeft->right->functionCallCount == 0 && 
-                         currentLeft->right->assignmentCount == 0) {
-                         currentLeft->right->eliminateIC = true;
-                     }
-                 }
-                 if (currentLeft->right != nullptr && !currentLeft->right->eliminateIC) {
-                     node->stackLoad += currentLeft->right->stackLoad;
+                 if (currentLeft->right != nullptr) {
+                    // Inner parts can be eliminated if ineffective
+                    if ((optimization & OPTIMIZE_DC_EXPPART) && isTopmostComma && !inCallOrArrayLiteral) {
+                        if (currentLeft->right->functionCallCount == 0 &&
+                            currentLeft->right->assignmentCount == 0) {
+                            currentLeft->right->eliminateIC = true;
+                        }
+                    }
+                    if (!currentLeft->right->eliminateIC) {
+                        node->stackLoad += currentLeft->right->stackLoad;
+                    }
                  }
                  currentLeft = currentLeft->left; // Move to the next left part in the chain
-             } else { // It's a single expression part at the end of the comma chain
+             } else { // It's a single expression part at the end of the comma chain (leftmost leaf)
+                 // This is an inner part (leftmost), can be eliminated if ineffective
                  if ((optimization & OPTIMIZE_DC_EXPPART) && isTopmostComma && !inCallOrArrayLiteral) {
-                     if (currentLeft->functionCallCount == 0 && 
+                     if (currentLeft->functionCallCount == 0 &&
                          currentLeft->assignmentCount == 0) {
                          currentLeft->eliminateIC = true;
                      }
@@ -472,6 +511,14 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
                  }
                  break; // End of the comma chain
              }
+         }
+         
+         // After all processing, if stackLoad is still 0 (meaning all parts were eliminated
+         // OR the only effective part had a stackLoad of 0, which is unlikely for expressions),
+         // ensure it's at least 1, as a comma operator always leaves one value on the stack.
+         // This is a failsafe for the "last part must be preserved" logic.
+         if (node->stackLoad == 0 && node->opCode == OP_COMMA) {
+             node->stackLoad = 1;
          }
          break;
       }
@@ -583,13 +630,11 @@ void DGEval::scanForIC(DGEvalExpNode *parentNode, DGEvalExpNode *node) {
       }
       
       case INSID: {
-         ic->emitIC(OP_ASSIGN, 0, node->type)->strConstant = node->stringValue;
+         ic->emitIC(INSID, 0, node->type)->strConstant = node->stringValue;
          break;
       }
 
       case OP_COMMA: {
-         // The actual instruction for comma is POP with its stackLoad.
-         // We need to pop all but the last value from the stack.
          if (node->stackLoad > 1) {
             ic->emitIC(POP, node->stackLoad - 1, { DGEvalType::DGNone, 0 });
          }
@@ -603,7 +648,71 @@ void DGEval::scanForIC(DGEvalExpNode *parentNode, DGEvalExpNode *node) {
 }
 
 void DGEval::peepholeIC() {
-   return;
+   if (!(optimization & (OPTIMIZE_PH_OFFLOAD | OPTIMIZE_PH_CONSTSINK))) {
+      return;
+   }
+
+   // Iterate from the third instruction (index 2) to allow for a 3-instruction window
+   for (int i = 2; i < ic->instCount(); ++i) {
+      DGEvalCodePathWindow window;
+      window.build(ic, i, 3); // Build a window of 3 instructions ending at 'i'
+
+      // Flags to determine if the optimization can be applied across all paths
+      bool can_apply_constsink_here = (optimization & OPTIMIZE_PH_CONSTSINK);
+      bool can_apply_offload_here = (optimization & OPTIMIZE_PH_OFFLOAD);
+
+      if (window.path.empty()) {
+          // If no paths found, continue to next instruction (shouldn't happen for direct execution flow if i >= 2)
+          continue;
+      }
+
+      for (DGEvalCodePath *path : window.path) {
+         // Ensure the path represents a linear sequence of i-2, i-1, i for peephole optimization
+         // path->at(0) is the current instruction's index (i)
+         // path->at(1) should be (i-1)
+         // path->at(2) should be (i-2)
+         if (path->size() < 3 || path->at(0) != i || path->at(1) != (i - 1) || path->at(2) != (i - 2)) {
+             // This path is not a linear fall-through of 3 instructions
+             can_apply_constsink_here = false;
+             can_apply_offload_here = false;
+             break; // No need to check other paths if one path breaks the linear assumption
+         }
+
+         DGEvalICInst *inst2 = ic->instructionAt(i);     // Instruction at index i
+         DGEvalICInst *inst1 = ic->instructionAt(i - 1); // Instruction at index i-1
+         DGEvalICInst *inst0 = ic->instructionAt(i - 2); // Instruction at index i-2
+
+         // Constant Value Sink Optimization check
+         if (can_apply_constsink_here) {
+            if (!(inst1 != nullptr && inst2 != nullptr &&
+                  inst1->opCode == CONST && inst2->opCode == POP)) {
+               can_apply_constsink_here = false;
+            }
+         }
+
+         // Ineffective Store Load Optimization check
+         if (can_apply_offload_here) {
+            if (!(inst0 != nullptr && inst1 != nullptr && inst2 != nullptr &&
+                  inst0->opCode == OP_ASSIGN && inst1->opCode == POP && inst2->opCode == INSID &&
+                  inst0->strConstant != nullptr && inst2->strConstant != nullptr &&
+                  *(inst0->strConstant) == *(inst2->strConstant))) {
+               can_apply_offload_here = false;
+            }
+         }
+      }
+
+      // Apply optimizations if conditions met for all valid linear paths
+      if (can_apply_constsink_here && (optimization & OPTIMIZE_PH_CONSTSINK)) {
+         ic->markRemoval(i - 1, 2); // Mark CONST (i-1) and POP (i) for removal
+      }
+      
+      if (can_apply_offload_here && (optimization & OPTIMIZE_PH_OFFLOAD)) {
+         ic->markRemoval(i - 2, 3); // Mark ASSIGN (i-2), POP (i-1), INSID (i) for removal
+      }
+   }
+
+   // After scanning all instructions, apply the removals
+   ic->applyRemoval();
 }
 
 double DGEval::mean(DGEvalArrayDouble *array) {
