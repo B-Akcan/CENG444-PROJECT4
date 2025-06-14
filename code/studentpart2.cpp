@@ -622,19 +622,27 @@ void DGEval::scanForIC(DGEvalExpNode *parentNode, DGEvalExpNode *node) {
       case OP_LTE:
       case OP_GT:
       case OP_GTE:
-      case OP_ASSIGN:
       case OP_NOP: {
          ic->emitIC(node->opCode, 0, node->type);
          break;
       }
       
+      case OP_ASSIGN: {
+         // p1 is the word index, strConstant is the name of the word.
+         // node->idNdx will hold the symbol table index.
+         ic->emitIC(OP_ASSIGN, node->idNdx, node->type)->strConstant = node->stringValue;
+         break;
+      }
+      
       case OP_CALL: {
-         ic->emitIC(OP_CALL, node->idNdx, node->type);
+         // p1 is the number of actual parameters (pVector size)
+         ic->emitIC(OP_CALL, node->pVector != nullptr ? (int)node->pVector->size() : 0, node->type);
          break;
       }
       
       case INSID: {
-         ic->emitIC(INSID, 0, node->type)->strConstant = node->stringValue;
+         // p1 implies the word (symbol table index), strConstant is the name (for debugging/JSON)
+         ic->emitIC(INSID, node->idNdx, node->type)->strConstant = node->stringValue;
          break;
       }
 
