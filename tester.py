@@ -65,15 +65,11 @@ def main():
     numb_of_wrongs = 0
     numb_of_success = 0
 
-    # for i in range(16):
-    #     s,w = handle_folder(i)
+    for i in range(16):
+        s,w = handle_folder(i)
 
-    #     numb_of_wrongs += w
-    #     numb_of_success += s
-
-    s,w = handle_folder(0)
-    numb_of_wrongs += w
-    numb_of_success += s
+        numb_of_wrongs += w
+        numb_of_success += s
 
     os.remove("./code/tester.txt")
     os.remove("./code/tester.json")

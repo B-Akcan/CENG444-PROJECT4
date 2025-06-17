@@ -29,7 +29,7 @@
 00028 const     0 type:[number:0] 4
 00029 const     0 type:[number:0] 6
 00030 lrt       0 type:[number:1] 3
-00031 call      1 type:[number:0] 
+00031 call      1 type:[number:0] "stddev" @0
 00032 id        3 type:[number:0] "b"
 00033 gt        0 type:[number:0] 
 00034 jf       48 type:[number:0] 

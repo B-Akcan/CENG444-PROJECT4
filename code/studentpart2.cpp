@@ -42,70 +42,85 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
    
    switch (node->opCode) {
       case OP_ADD: {
-         if (node->left != nullptr && node->right != nullptr && 
-               node->left->type.dim == 0 && node->right->type.dim == 0) {
-            if (node->left->type.type == DGEvalType::DGNumber && node->right->type.type == DGEvalType::DGNumber) { // add two numbers
-               if (node->left->opCode == CONST && node->right->opCode == CONST) { // 5 + 3
-                  node->opCode = CONST;
-                  node->type.type = DGEvalType::DGNumber;
-                  node->doubleValue = node->left->doubleValue + node->right->doubleValue;
-                  delete node->left;
-                  delete node->right;
-                  node->left = node->right = nullptr;
-                  transformed = true;
-               } else if (node->left->opCode == CONST && node->left->doubleValue == 0) { // 0 + x
+         if (node->left != nullptr && node->right != nullptr) {
+            if (node->left->type.dim == 0 && node->right->type.dim == 0) {
+               if (node->left->type.type == DGEvalType::DGNumber && node->right->type.type == DGEvalType::DGNumber) { // add two numbers
+                  if (node->left->opCode == CONST && node->right->opCode == CONST) { // 5 + 3
+                     node->opCode = CONST;
+                     node->type.type = DGEvalType::DGNumber;
+                     node->doubleValue = node->left->doubleValue + node->right->doubleValue;
+                     delete node->left;
+                     delete node->right;
+                     node->left = node->right = nullptr;
+                     transformed = true;
+                  } else if (node->left->opCode == CONST && node->left->doubleValue == 0) { // 0 + x
+                     delete node->left;
+                     node->left = nullptr;
+                     node = node->right;
+                     transformed = true;
+                  } else if (node->right->opCode == CONST && node->right->doubleValue == 0) { // x + 0
+                     delete node->right;
+                     node->right = nullptr;
+                     node = node->left;
+                     transformed = true;
+                  }
+               } else if (node->left->type.type == DGEvalType::DGString && node->right->type.type == DGEvalType::DGString) { // string + string concatenation
+                  if (node->left->opCode == CONST && node->right->opCode == CONST) { // "a" + "b"
+                     node->type.type = DGEvalType::DGString;
+                     node->idNdx = 3;
+                     node->stringValue = new string(*(node->left->stringValue) + *(node->right->stringValue));
+                     delete node->left;
+                     delete node->right;
+                     node->left = node->right = nullptr;
+                     transformed = true;
+                  } else { // s1 + s2
+                     node->type.type = DGEvalType::DGString;
+                     node->idNdx = 4;
+                  }
+               } else if (node->left->type.type == DGEvalType::DGString && node->right->type.type == DGEvalType::DGNumber) { // string + number concatenation
+                  if (node->left->opCode == CONST && node->right->opCode == CONST) { // "a" + 5
+                     node->type.type = DGEvalType::DGString;
+                     node->idNdx = 4;
+                     *(node->stringValue) = *(node->left->stringValue) + to_string(node->right->doubleValue);
+                     delete node->left;
+                     delete node->right;
+                     node->left = node->right = nullptr;
+                     transformed = true;
+                  } else { // s + a
+                     node->type.type = DGEvalType::DGString;
+                     node->idNdx = 4;
+                  }
+               } else if (node->left->type.type == DGEvalType::DGNumber && node->right->type.type == DGEvalType::DGString) { // number + string concatenation
+                  if (node->left->opCode == CONST && node->right->opCode == CONST) { // 5 + "a"
+                     node->type.type = DGEvalType::DGString;
+                     node->idNdx = 4;
+                     *(node->stringValue) = to_string(node->left->doubleValue) + *(node->right->stringValue);
+                     delete node->left;
+                     delete node->right;
+                     node->left = node->right = nullptr;
+                     transformed = true;
+                  } else { // a + s
+                     node->type.type = DGEvalType::DGString;
+                     node->idNdx = 4;
+                  }
+               } else if (node->left->type.type == DGEvalType::DGString && *(node->left->stringValue) == "") { // "" + x 
                   delete node->left;
                   node->left = nullptr;
                   node = node->right;
+                  node->type.type = DGEvalType::DGString;
+                  node->idNdx = 4;
                   transformed = true;
-               } else if (node->right->opCode == CONST && node->right->doubleValue == 0) { // x + 0
+               } else if (node->right->type.type == DGEvalType::DGString && *(node->right->stringValue) == "") { // x + ""
                   delete node->right;
                   node->right = nullptr;
                   node = node->left;
-                  transformed = true;
-               }
-            } else if (node->left->type.type == DGEvalType::DGString && node->right->type.type == DGEvalType::DGString) { // string + string concatenation
-               if (node->left->opCode == CONST && node->right->opCode == CONST) { // "a" + "b"
-                  node->opCode = CONST;
                   node->type.type = DGEvalType::DGString;
-                  node->stringValue = new string(*(node->left->stringValue) + *(node->right->stringValue));
-                  delete node->left;
-                  delete node->right;
-                  node->left = node->right = nullptr;
+                  node->idNdx = 4;
                   transformed = true;
                }
-            } else if (node->left->type.type == DGEvalType::DGString && node->right->type.type == DGEvalType::DGNumber) { // string + number concatenation
-               if (node->left->opCode == CONST && node->right->opCode == CONST) { // "a" + 5
-                  node->opCode = CONST;
-                  node->type.type = DGEvalType::DGString;
-                  *(node->stringValue) = *(node->left->stringValue) + to_string(node->right->doubleValue);
-                  delete node->left;
-                  delete node->right;
-                  node->left = node->right = nullptr;
-                  transformed = true;
-               }
-            } else if (node->left->type.type == DGEvalType::DGNumber && node->right->type.type == DGEvalType::DGString) { // number + string concatenation
-               if (node->left->opCode == CONST && node->right->opCode == CONST) { // 5 + "a"
-                  node->opCode = CONST;
-                  node->type.type = DGEvalType::DGString;
-                  *(node->stringValue) = to_string(node->left->doubleValue) + *(node->right->stringValue);
-                  delete node->left;
-                  delete node->right;
-                  node->left = node->right = nullptr;
-                  transformed = true;
-               }
-            } else if (node->left->type.type == DGEvalType::DGString && *(node->left->stringValue) == "") { // "" + x 
-               delete node->left;
-               node->left = nullptr;
-               node = node->right;
-               node->type.type = DGEvalType::DGString;
-               transformed = true;
-            } else if (node->right->type.type == DGEvalType::DGString && *(node->right->stringValue) == "") { // x + ""
-               delete node->right;
-               node->right = nullptr;
-               node = node->left;
-               node->type.type = DGEvalType::DGString;
-               transformed = true;
+            } else if (node->left->type.dim > 0 && node->right->type.dim == node->left->type.dim - 1 && node->left->type.type == node->right->type.type) { // array push
+               node->opCode = LRT;
+               node->idNdx = 2;
             }
          }
          break;
@@ -509,6 +524,12 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
          }
          break;
       }
+
+      case OP_AA: {
+         node->opCode = LRT;
+         node->idNdx = 1;
+         break;
+      }
    }
 
    if (transformed && parentNode != nullptr) {
@@ -545,21 +566,18 @@ void DGEval::scanForIC(DGEvalExpNode *parentNode, DGEvalExpNode *node) {
       return;
    }
    
-   // Skip generating IC for eliminated nodes
    if (node->eliminateIC) {
       return;
    }
    
    if (node->opCode == OP_COND) {
       scanForIC(node, node->left);
-      DGEvalICInst *jfInst = ic->emitIC(JF, 0);
+      DGEvalICInst *jfInst = ic->emitIC(JF, 0, node->right->left->type);
       int jfIndex = ic->instCount() - 1;
-      
       scanForIC(node, node->right->left);
-      DGEvalICInst *jmpInst = ic->emitIC(JMP, 0);
+      DGEvalICInst *jmpInst = ic->emitIC(JMP, 0, node->right->right->type);
       int jmpIndex = ic->instCount() - 1;
       jfInst->p1 = ic->instCount();
-      
       scanForIC(node, node->right->right);
       jmpInst->p1 = ic->instCount();
       
@@ -591,13 +609,21 @@ void DGEval::scanForIC(DGEvalExpNode *parentNode, DGEvalExpNode *node) {
                ic->emitIC(CONST, 0, node->type)->boolConstant = node->boolValue;
                break;
             case DGEvalType::DGString:
-               ic->emitIC(CONST, 0, node->type)->strConstant = node->stringValue;
+               ic->emitIC(LRT, 3, node->type)->strConstant = node->stringValue;
                break;
          }
          break;
       }
       
-      case OP_ADD:
+      case OP_ADD: {
+         if (node->type.type == DGEvalType::DGString && node->type.dim == 0) { // string concatenation
+            ic->emitIC(LRT, node->idNdx, node->type)->strConstant = node->stringValue;
+         } else {
+            ic->emitIC(node->opCode, 0, node->type);
+         }
+         break;
+      }
+
       case OP_SUB:
       case OP_MUL:
       case OP_DIV:
@@ -605,14 +631,19 @@ void DGEval::scanForIC(DGEvalExpNode *parentNode, DGEvalExpNode *node) {
       case OP_NOT:
       case OP_BAND:
       case OP_BOR:
+      case OP_NOP: {
+         ic->emitIC(node->opCode, 0, node->type);
+         break;
+      }
+
       case OP_EQ:
       case OP_NEQ:
       case OP_LT:
       case OP_LTE:
       case OP_GT:
       case OP_GTE:
-      case OP_NOP: {
-         ic->emitIC(node->opCode, 0, node->type);
+      {
+         ic->emitIC(node->opCode, 0, node->left->type);
          break;
       }
       
