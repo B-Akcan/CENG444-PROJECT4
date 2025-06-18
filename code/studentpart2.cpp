@@ -464,16 +464,17 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
 
       case OP_COMMA: {
          bool isTopmostComma = false;
-         if (parentNode == nullptr ||
-             (parentNode->opCode != OP_COMMA && parentNode->left == node)) {
+         if (parentNode == nullptr || parentNode->opCode != OP_COMMA) {
             isTopmostComma = true;
          }
 
          bool inCallOrArrayLiteral = false;
-         if (parentNode != nullptr && (parentNode->opCode == OP_CALL || parentNode->opCode == LRT)) {
-             if (parentNode->right == node) {
-                 inCallOrArrayLiteral = true;
-             }
+         if (parentNode != nullptr) {
+            if (parentNode->opCode == OP_CALL && parentNode->right == node) {
+               inCallOrArrayLiteral = true;
+            } else if (parentNode->opCode == LRT && parentNode->left == node) {
+               inCallOrArrayLiteral = true;
+            }
          }
 
          node->stackLoad = 0;
@@ -496,39 +497,28 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
 
          DGEvalExpNode* currentLeft = node->left;
          while (currentLeft != nullptr) {
-             if (currentLeft->opCode == OP_COMMA) {
-                 if (currentLeft->right != nullptr) {
-                     if ((optimization & OPTIMIZE_DC_EXPPART) && isTopmostComma && !inCallOrArrayLiteral) {
-                         if (currentLeft->right->functionCallCount == 0 &&
-                             currentLeft->right->assignmentCount == 0) {
-                             currentLeft->right->eliminateIC = true;
-                         } else {
-                             currentLeft->right->eliminateIC = false;
-                         }
-                     } else {
-                         currentLeft->right->eliminateIC = false;
-                     }
-                     if (!currentLeft->right->eliminateIC) {
-                        node->stackLoad += currentLeft->right->stackLoad;
-                     }
-                 }
-                 currentLeft = currentLeft->left;
-             } else { 
+            if (currentLeft->opCode == OP_COMMA) {
+               if (currentLeft->right != nullptr) {
                   if ((optimization & OPTIMIZE_DC_EXPPART) && isTopmostComma && !inCallOrArrayLiteral) {
-                      if (currentLeft->functionCallCount == 0 &&
-                          currentLeft->assignmentCount == 0) {
-                          currentLeft->eliminateIC = true;
-                      } else {
-                          currentLeft->eliminateIC = false;
-                      }
+                     if (currentLeft->right->functionCallCount == 0 &&
+                        currentLeft->right->assignmentCount == 0) {
+                        currentLeft->right->eliminateIC = true;
+                     } else {
+                        currentLeft->right->eliminateIC = false;
+                     }
                   } else {
-                      currentLeft->eliminateIC = false;
+                     currentLeft->right->eliminateIC = false;
                   }
-                  if (!currentLeft->eliminateIC) {
-                     node->stackLoad += currentLeft->stackLoad;
+                  if (!currentLeft->right->eliminateIC) {
+                     node->stackLoad += currentLeft->right->stackLoad;
                   }
-                 break;
-             }
+               }
+               currentLeft = currentLeft->left;
+            } else { // currentLeft is the left-most operand of all commas, thus should not be eliminated
+               currentLeft->eliminateIC = false;
+               node->stackLoad += currentLeft->stackLoad;
+               break;
+            }
          }
 
          if (node->stackLoad == 0 && node->opCode == OP_COMMA) {
