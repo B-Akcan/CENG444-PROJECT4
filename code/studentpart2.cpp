@@ -3,6 +3,9 @@ using namespace std;
 #include <string>
 #include <vector>
 #include <stdlib.h>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
 #include "dgevalsup.h"
 
 #include "dgevalsyn.tab.hh"
@@ -737,83 +740,170 @@ void DGEval::peepholeIC() {
 }
 
 double DGEval::mean(DGEvalArrayDouble *array) {
-   return 0;
+   if (array == nullptr || array->arr->empty()) {
+      return 0.0;
+   }
+   
+   double sum = 0.0;
+   for (double val : *(array->arr)) {
+      sum += val;
+   }
+   return sum / array->arr->size();
 }
 
 double DGEval::stddev(DGEvalArrayDouble *array) {
-   return 0;
+   if (array == nullptr || array->arr->size() < 2) {
+      return 0.0;
+   }
+   
+   double avg = mean(array);
+   double sumSquares = 0.0;
+   
+   for (double val : *(array->arr)) {
+      double diff = val - avg;
+      sumSquares += diff * diff;
+   }
+   
+   return sqrt(sumSquares / (array->arr->size() - 1));
 }
 
 double DGEval::count(DGEvalArrayDouble *array) {
-   return 0;
+   if (array == nullptr) {
+      return 0.0;
+   }
+   return (double)array->arr->size();
 }
 
 double DGEval::min(DGEvalArrayDouble *array) {
-   return 0;
+   if (array == nullptr || array->arr->empty()) {
+      return 0.0;
+   }
+   
+   double minVal = array->arr->at(0);
+   for (double val : *(array->arr)) {
+      if (val < minVal) {
+         minVal = val;
+      }
+   }
+   return minVal;
 }
 
 double DGEval::max(DGEvalArrayDouble *array) {
-   return 0;
+   if (array == nullptr || array->arr->empty()) {
+      return 0.0;
+   }
+   
+   double maxVal = array->arr->at(0);
+   for (double val : *(array->arr)) {
+      if (val > maxVal) {
+         maxVal = val;
+      }
+   }
+   return maxVal;
 }
 
 double DGEval::sin(double number) {
-   return 0;
+   return std::sin(number);
 }
 
 double DGEval::cos(double number) {
-   return 0;
+   return std::cos(number);
 }
 
 double DGEval::tan(double number) {
-   return 0;
+   return std::tan(number);
 }
 
 double DGEval::pi() {
-   return 0;
+   return M_PI;
 }
 
 double DGEval::atan(double number) {
-   return 0;
+   return std::atan(number);
 }
 
 double DGEval::asin(double number) {
-   return 0;
+   return std::asin(number);
 }
 
 double DGEval::acos(double number) {
-   return 0;
+   return std::acos(number);
 }
 
 double DGEval::exp(double number) {
-   return 0;
+   return std::exp(number);
 }
 
 double DGEval::ln(double number) {
-   return 0;
+   return std::log(number);
 }
 
 double DGEval::print(string *str) {
-   return 0;
+   if (str != nullptr) {
+      cout << *str;
+   }
+   return 0.0;
 }
 
 double DGEval::random(double number) {
-   return 0;
+   if (number <= 0) {
+      return 0.0;
+   }
+   return (double)rand() / RAND_MAX * number;
 }
 
 double DGEval::len(string *str) {
-   return 0;
+   if (str == nullptr) {
+      return 0.0;
+   }
+   return (double)str->length();
 }
 
 string *DGEval::right(DGEval *dgEval, string *str, double n) {
-   return nullptr;
+   if (str == nullptr || n <= 0) {
+      return new string("");
+   }
+   
+   int len = (int)n;
+   if (len >= str->length()) {
+      return new string(*str);
+   }
+   
+   return new string(str->substr(str->length() - len));
 }
 
 string *DGEval::left(DGEval *dgEval, string *str, double n) {
-   return nullptr;
+   if (str == nullptr || n <= 0) {
+      return new string("");
+   }
+   
+   int len = (int)n;
+   if (len >= str->length()) {
+      return new string(*str);
+   }
+   
+   return new string(str->substr(0, len));
 }
 
 DGEvalDynamicFunc *DGEval::generateCode() {
-   return nullptr;
+   if (ic == nullptr) {
+      return nullptr;
+   }
+
+   X64CodeBag *codeBag = new X64CodeBag(this);
+   codeBag->emitPrologue(0);
+   
+   for (int i = 0; i < ic->instCount(); i++) {
+      DGEvalICInst *inst = ic->instructionAt(i);
+      if (inst != nullptr) {
+         codeBag->translateInstruction(inst);
+      }
+   }
+   
+   codeBag->emitEpilogue();
+   DGEvalDynamicFunc *func = (DGEvalDynamicFunc *)codeBag->createCodeBase();
+   delete codeBag;
+   return func;
 }
 
 void DGEvalIC::writeAsJSON(ostream *outStream) {

@@ -314,6 +314,193 @@ void X64CodeBag::translateInstruction(DGEvalICInst *inst)
    inst->codeOffset=codeLen;
    switch (inst->opCode)
    {
+      case CONST: {
+         // Push constant value onto stack
+         if (inst->type.dim == 0) {
+            switch (inst->type.type) {
+               case DGEvalType::DGNumber:
+                  // Push double constant
+                  emitBytes(2, 0x48, 0xB8); // mov rax, value
+                  emitCodeFrag(inst->numConstant);
+                  emitBytes(1, 0x50); // push rax
+                  break;
+               case DGEvalType::DGBoolean:
+                  // Push boolean constant
+                  emitBytes(2, 0x48, 0xB8); // mov rax, value
+                  emitCodeFrag((uint64_t)inst->boolConstant);
+                  emitBytes(1, 0x50); // push rax
+                  break;
+               case DGEvalType::DGString:
+                  // String constants are handled via LRT
+                  break;
+            }
+         }
+         break;
+      }
+      
+      case OP_ADD: {
+         if (inst->type.dim == 0 && inst->type.type == DGEvalType::DGNumber) {
+            // Double addition
+            xmmArithInstruction(0x58); // addsd
+         } else {
+            // Integer addition
+            emitBytes(5, 0x58, 0x5A, 0x48, 0x01, 0xD0); // pop rax, pop rdx, add rax, rdx
+            emitBytes(1, 0x50); // push rax
+         }
+         break;
+      }
+      
+      case OP_SUB: {
+         if (inst->type.dim == 0 && inst->type.type == DGEvalType::DGNumber) {
+            // Double subtraction
+            xmmArithInstruction(0x5C); // subsd
+         } else {
+            // Integer subtraction
+            emitBytes(5, 0x5A, 0x58, 0x48, 0x29, 0xC2); // pop rdx, pop rax, sub rdx, rax
+            emitBytes(3, 0x48, 0x89, 0xD0); // mov rax, rdx
+            emitBytes(1, 0x50); // push rax
+         }
+         break;
+      }
+      
+      case OP_MUL: {
+         if (inst->type.dim == 0 && inst->type.type == DGEvalType::DGNumber) {
+            // Double multiplication
+            xmmArithInstruction(0x59); // mulsd
+         } else {
+            // Integer multiplication
+            emitBytes(5, 0x58, 0x5A, 0x48, 0xF7, 0xEA); // pop rax, pop rdx, imul rdx
+            emitBytes(1, 0x50); // push rax
+         }
+         break;
+      }
+      
+      case OP_DIV: {
+         if (inst->type.dim == 0 && inst->type.type == DGEvalType::DGNumber) {
+            // Double division
+            xmmArithInstruction(0x5E); // divsd
+         } else {
+            // Integer division
+            emitBytes(5, 0x5A, 0x58, 0x48, 0xF7, 0xFA); // pop rdx, pop rax, idiv rdx
+            emitBytes(1, 0x50); // push rax
+         }
+         break;
+      }
+      
+      case OP_MINUS: {
+         if (inst->type.dim == 0 && inst->type.type == DGEvalType::DGNumber) {
+            // Double negation
+            emitBytes(11, 0xF2, 0x0F, 0x10, 0x04, 0x24, // movsd xmm0, [rsp]
+                     0xF2, 0x0F, 0x57, 0xC0, 0xF2, 0x0F, 0x5C); // xorpd xmm0, xmm0, subsd xmm0, xmm0
+            emitBytes(5, 0x66, 0x48, 0x0F, 0x7E, 0xC0); // movq rax, xmm0
+            emitBytes(1, 0x50); // push rax
+         } else {
+            // Integer negation
+            emitBytes(4, 0x58, 0x48, 0xF7, 0xD8); // pop rax, neg rax
+            emitBytes(1, 0x50); // push rax
+         }
+         break;
+      }
+      
+      case OP_NOT: {
+         // Boolean negation
+         emitBytes(4, 0x58, 0x48, 0x83, 0xF0); // pop rax, xor rax, 1
+         emitBytes(1, 0x01);
+         emitBytes(1, 0x50); // push rax
+         break;
+      }
+      
+      case OP_BAND: {
+         // Boolean AND
+         emitBytes(5, 0x58, 0x5A, 0x48, 0x21, 0xD0); // pop rax, pop rdx, and rax, rdx
+         emitBytes(1, 0x50); // push rax
+         break;
+      }
+      
+      case OP_BOR: {
+         // Boolean OR
+         emitBytes(5, 0x58, 0x5A, 0x48, 0x09, 0xD0); // pop rax, pop rdx, or rax, rdx
+         emitBytes(1, 0x50); // push rax
+         break;
+      }
+      
+      case OP_EQ:
+      case OP_NEQ:
+      case OP_LT:
+      case OP_LTE:
+      case OP_GT:
+      case OP_GTE: {
+         // Comparison operations
+         unsigned char jumpOp;
+         switch (inst->opCode) {
+            case OP_EQ: jumpOp = 0x74; break;  // je
+            case OP_NEQ: jumpOp = 0x75; break; // jne
+            case OP_LT: jumpOp = 0x7C; break;  // jl
+            case OP_LTE: jumpOp = 0x7E; break; // jle
+            case OP_GT: jumpOp = 0x7F; break;  // jg
+            case OP_GTE: jumpOp = 0x7D; break; // jge
+            default: jumpOp = 0x74; break;
+         }
+         comparisonInstruction(inst->type, jumpOp);
+         break;
+      }
+      
+      case OP_ASSIGN: {
+         // Assignment operation
+         // Store value from stack to variable
+         emitBytes(1, 0x58); // pop rax
+         // Store in variable (symbol table lookup would be needed here)
+         // For now, just push the value back
+         emitBytes(1, 0x50); // push rax
+         break;
+      }
+      
+      case INSID: {
+         // Load variable value onto stack
+         // Variable lookup would be needed here
+         // For now, push a placeholder value
+         emitBytes(2, 0x48, 0xB8); // mov rax, 0
+         emitCodeFrag((uint64_t)0);
+         emitBytes(1, 0x50); // push rax
+         break;
+      }
+      
+      case POP: {
+         // Pop specified number of values from stack
+         for (int i = 0; i < inst->p1; i++) {
+            emitBytes(1, 0x58); // pop rax
+         }
+         break;
+      }
+      
+      case JMP: {
+         // Unconditional jump
+         emitBytes(1, 0xE9); // jmp
+         // Jump target would need to be resolved
+         emitCodeFrag((uint32_t)0); // placeholder offset
+         break;
+      }
+      
+      case JF: {
+         // Jump if false
+         emitBytes(1, 0x58); // pop rax
+         emitBytes(3, 0x48, 0x85, 0xC0); // test rax, rax
+         emitBytes(1, 0x74); // je
+         // Jump target would need to be resolved
+         emitCodeFrag((uint8_t)0); // placeholder offset
+         break;
+      }
+      
+      case JT: {
+         // Jump if true
+         emitBytes(1, 0x58); // pop rax
+         emitBytes(3, 0x48, 0x85, 0xC0); // test rax, rax
+         emitBytes(1, 0x75); // jne
+         // Jump target would need to be resolved
+         emitCodeFrag((uint8_t)0); // placeholder offset
+         break;
+      }
+      
       case OP_CALL:
          DGEvalFuncDesc   *fd;
          fd=dgEval->libFunctionAt((int)inst->numConstant);

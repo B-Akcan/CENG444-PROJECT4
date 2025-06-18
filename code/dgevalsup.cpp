@@ -269,6 +269,9 @@ DGEval::DGEval(MyParser *pParser)
    draftedStatements=new DGEvalStatementList();
    optimization=pParser->optimization;
 
+   // Initialize random number generator
+   srand(time(nullptr));
+
    if (DGEval::sVector==nullptr)
    {
       int s=sizeof(DGEval::lib)/sizeof(DGEvalFuncDesc);

@@ -9,7 +9,7 @@ using namespace std;
 #include "FlexLexer.h"
 #include "MyFlexLexer.h"
 
-// #define DO_X64
+#define DO_X64
 
 int main(int argc, char **argv)
 {
