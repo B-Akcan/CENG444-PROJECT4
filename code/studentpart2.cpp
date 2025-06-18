@@ -480,10 +480,14 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
          
          if (node->right != nullptr) {
             if ((optimization & OPTIMIZE_DC_EXPPART) && isTopmostComma && !inCallOrArrayLiteral) {
-               node->right->eliminateIC = false; 
-            } /* else if (node->right->functionCallCount == 0 && node->right->assignmentCount == 0) {
-               node->right->eliminateIC = true;
-            } */
+               if (node->right->functionCallCount == 0 && node->right->assignmentCount == 0) {
+                  node->right->eliminateIC = true;
+               } else {
+                  node->right->eliminateIC = false;
+               }
+            } else {
+               node->right->eliminateIC = false;
+            }
             
             if (!node->right->eliminateIC) {
                node->stackLoad += node->right->stackLoad;
@@ -498,7 +502,11 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
                          if (currentLeft->right->functionCallCount == 0 &&
                              currentLeft->right->assignmentCount == 0) {
                              currentLeft->right->eliminateIC = true;
+                         } else {
+                             currentLeft->right->eliminateIC = false;
                          }
+                     } else {
+                         currentLeft->right->eliminateIC = false;
                      }
                      if (!currentLeft->right->eliminateIC) {
                         node->stackLoad += currentLeft->right->stackLoad;
@@ -510,7 +518,11 @@ void DGEval::scanConstantFolding(DGEvalExpNode *parentNode, DGEvalExpNode *node)
                       if (currentLeft->functionCallCount == 0 &&
                           currentLeft->assignmentCount == 0) {
                           currentLeft->eliminateIC = true;
+                      } else {
+                          currentLeft->eliminateIC = false;
                       }
+                  } else {
+                      currentLeft->eliminateIC = false;
                   }
                   if (!currentLeft->eliminateIC) {
                      node->stackLoad += currentLeft->stackLoad;
@@ -545,16 +557,17 @@ void DGEval::scanForIC() {
    ic = new DGEvalIC();
 
    for (DGEvalStatementNode *statement = draftedStatements->head; statement != nullptr; statement = statement->next) {
-      bool isEffective = true;
-      if (optimization & OPTIMIZE_DC_STATEMENT) {
-         isEffective = statement->asPredecessorCount > 0 || 
-                      (statement->exp != nullptr && 
-                       (statement->exp->functionCallCount > 0 || 
-                        statement->exp->assignmentCount > 0));
-      }
+      if (statement->exp != nullptr) {
+         bool isEffective = true;
+         if (optimization & OPTIMIZE_DC_STATEMENT) {
+            isEffective = (statement->asPredecessorCount > 0) || 
+                           (statement->exp->functionCallCount > 0) || 
+                           (statement->exp->assignmentCount > 0);
+         }
 
-      if (isEffective && statement->exp != nullptr) {
-         scanForIC(nullptr, statement->exp);
+         if (isEffective) {
+            scanForIC(nullptr, statement->exp);
+         }
       }
    }
 
@@ -688,35 +701,34 @@ void DGEval::peepholeIC() {
       return;
    }
 
-   for (int i = 2; i < ic->instCount(); ++i) {
-      DGEvalCodePathWindow window;
-      window.build(ic, i, 3);
-      bool can_apply_constsink_here = (optimization & OPTIMIZE_PH_CONSTSINK);
-      bool can_apply_offload_here = (optimization & OPTIMIZE_PH_OFFLOAD);
+   for (int i = 1; i < ic->instCount(); ++i) {
+      DGEvalICInst *inst1 = ic->instructionAt(i - 1);
+      DGEvalICInst *inst2 = ic->instructionAt(i);
 
-      if (window.path.empty()) {
-          continue;
+      if ((optimization & OPTIMIZE_PH_CONSTSINK) && 
+            inst1 != nullptr && inst2 != nullptr && inst2->opCode == POP) {
+         if ((inst1->opCode == CONST) || // numeric or boolean constant
+               (inst1->opCode == LRT && inst1->p1 == 3)) { // string constant
+            ic->markRemoval(i - 1, 2);
+         }
       }
+   }
 
-      for (DGEvalCodePath *path : window.path) {
-         if (path->size() < 3 || path->at(0) != i || path->at(1) != (i - 1) || path->at(2) != (i - 2)) {
-             can_apply_constsink_here = false;
-             can_apply_offload_here = false;
-             break;
+   if (optimization & OPTIMIZE_PH_OFFLOAD) {
+      for (int i = 2; i < ic->instCount(); ++i) {
+         DGEvalCodePathWindow window;
+         window.build(ic, i, 3);
+         bool can_apply_offload_here = true;
+
+         if (window.path.empty()) {
+             continue;
          }
 
-         DGEvalICInst *inst2 = ic->instructionAt(i); 
-         DGEvalICInst *inst1 = ic->instructionAt(i - 1);
-         DGEvalICInst *inst0 = ic->instructionAt(i - 2);
+         for (DGEvalCodePath *path : window.path) {
+            DGEvalICInst *inst2 = ic->instructionAt(i); 
+            DGEvalICInst *inst1 = ic->instructionAt(i - 1);
+            DGEvalICInst *inst0 = ic->instructionAt(i - 2);
 
-         if (can_apply_constsink_here) {
-            if (!(inst1 != nullptr && inst2 != nullptr &&
-                  inst1->opCode == CONST && inst2->opCode == POP)) {
-               can_apply_constsink_here = false;
-            }
-         }
-
-         if (can_apply_offload_here) {
             if (!(inst0 != nullptr && inst1 != nullptr && inst2 != nullptr &&
                   inst0->opCode == OP_ASSIGN && inst1->opCode == POP && inst2->opCode == INSID &&
                   inst0->strConstant != nullptr && inst2->strConstant != nullptr &&
@@ -724,14 +736,10 @@ void DGEval::peepholeIC() {
                can_apply_offload_here = false;
             }
          }
-      }
 
-      if (can_apply_constsink_here && (optimization & OPTIMIZE_PH_CONSTSINK)) {
-         ic->markRemoval(i - 1, 2);
-      }
-      
-      if (can_apply_offload_here && (optimization & OPTIMIZE_PH_OFFLOAD)) {
-         ic->markRemoval(i - 2, 3);
+         if (can_apply_offload_here) {
+            ic->markRemoval(i - 1, 2);
+         }
       }
    }
 

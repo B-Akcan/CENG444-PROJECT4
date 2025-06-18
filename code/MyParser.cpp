@@ -13,7 +13,7 @@ using namespace std;
 
 MyParser::MyParser(int pOptimization)
 {
-   //optimization=pOptimization;
+   optimization=pOptimization;
 }
 
 MyParser::~MyParser()

@@ -105,7 +105,7 @@ int main(int argc, char **argv)
             delete driver;
          }
          else
-            cout << "Unable to open the input file"<<inputFile<<"."<<endl;
+            cout << "Unable to open the input file "<<inputFile<<"."<<endl;
       }
    }
    else
